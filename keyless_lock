@@ -1,0 +1,142 @@
+#include <AccelStepper.h>
+#define HALFSTEP 8
+
+// Motor pin definitions
+#define motorPin1  3     // IN1 on the ULN2003 driver 1
+#define motorPin2  4     // IN2 on the ULN2003 driver 1
+#define motorPin3  5     // IN3 on the ULN2003 driver 1
+#define motorPin4  6     // IN4 on the ULN2003 driver 1
+
+AccelStepper stepper1(HALFSTEP, motorPin1, motorPin3, motorPin2, motorPin4);
+
+int xPin = A1;
+int yPin = A0;
+int buttonPin = 2;
+
+int xpos = 0;
+int ypos = 0;
+int buttonState = 0;
+
+String password = "updownleftright";
+String toAdd = "";
+int counter = 0; // for number of input for password
+
+int correct = 0; //if 1 unlocks, if 2 relocks
+int wrong = 0; //if 3 stops everything
+
+int on = 0; //unlocked state
+
+int rightLight = 7;
+//int wrongLight = 5;
+
+void setup() {
+  // put your setup code here, to run once:
+  stepper1.setMaxSpeed(1000.0);
+  stepper1.setAcceleration(100.0);
+  stepper1.setSpeed(200);
+  stepper1.moveTo(20000);
+
+  Serial.begin(9600);
+
+  Serial.println("------------STARTED-----------");
+  pinMode(xPin, INPUT);
+  pinMode(yPin, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(rightLight, OUTPUT);
+  //pinMode(wrongLight, OUTPUT);
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+ if (on == 0) {
+    xpos = analogRead(xPin);
+    ypos = analogRead(yPin);
+    buttonState = digitalRead(buttonPin);
+
+    Serial.print("X: ");
+    Serial.print(xpos);
+    Serial.print(" | Y: ");
+    Serial.print(ypos);
+    Serial.print(" | Button: ");
+    Serial.println(buttonState);
+    Serial.print(" | Counter: ");
+    Serial.println(counter);
+
+    if (xpos > 600) {
+      toAdd += "up";
+      delay(300);
+      counter++;
+    } else if (xpos < 400) {
+      toAdd += "down";
+      delay(300);
+      counter++;
+    } else if (ypos > 600) {
+      toAdd += "right";
+      delay(300);
+      counter++;
+    } else if (ypos < 400) {
+      toAdd += "left";
+      delay(300);
+      counter++;
+    } else if (buttonState == 0) {
+      toAdd += "press";
+      delay(300);
+      counter++;
+    }
+
+    Serial.println(toAdd);
+    if (counter == 4) {
+      if (password == toAdd) {
+        Serial.println("RIGHT RIGHT RIGHT");
+        Serial.println("RIGHT RIGHT RIGHT");
+        Serial.println("RIGHT RIGHT RIGHT");
+        correct++;
+        wrong = 0;
+        toAdd = "";
+        counter = 0;
+
+        digitalWrite(rightLight, HIGH);
+        delay(200);
+        digitalWrite(rightLight, LOW);
+        delay(200);
+        digitalWrite(rightLight, HIGH);
+        delay(200);
+        digitalWrite(rightLight, LOW);
+        delay(200);
+        digitalWrite(rightLight, HIGH);
+        delay(200);
+        digitalWrite(rightLight, LOW);
+
+        if (correct == 1) {
+        stepper1.runToNewPosition(-2000);
+        } else {
+          stepper1.runToNewPosition(2000);
+          correct = 0;
+        }
+
+      } else {
+        Serial.println("WRONG WRONG WRONG");
+        Serial.println("WRONG WRONG WRONG");
+        Serial.println("WRONG WRONG WRONG");
+        wrong++;
+        toAdd = "";
+        counter = 0;
+        digitalWrite(rightLight, HIGH);
+        delay(500);
+        digitalWrite(rightLight, LOW);
+      }
+    }
+
+    if (wrong == 3) {
+      on = 1;
+      Serial.println("LOCKED FOREVER");
+      Serial.println("LOCKED FOREVER");
+      Serial.println("LOCKED FOREVER");
+      digitalWrite(rightLight, HIGH);
+      stepper1.runToNewPosition(2000);
+    }
+
+ }
+}
